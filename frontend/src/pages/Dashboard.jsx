@@ -17,49 +17,126 @@ export const Dashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const res = await axios.get('/api/dashboard');
-        setData(res.data);
-      } catch (error) {
-        console.error("Error fetching dashboard data, falling back to mock data for UI preview:", error);
-        // Mock data for UI preview without backend
-        const now = new Date();
-        setData({
-          user: { FirstName: 'Jane', LastName: 'Doe', Email: 'jane@example.com' },
-          athlete: { SportType: 'Running', SkillLevel: 'Intermediate' },
-          phones: [],
-          activities: [
-            { _id: '1', Type: 'Running', Duration: 45, Distance: 8.2, Date: new Date(now).setDate(now.getDate() - 1) },
-            { _id: '2', Type: 'Cycling', Duration: 90, Distance: 25.5, Date: new Date(now).setDate(now.getDate() - 2) },
-            { _id: '3', Type: 'Running', Duration: 30, Distance: 5.0, Date: new Date(now).setDate(now.getDate() - 3) },
-            { _id: '4', Type: 'Swimming', Duration: 40, Distance: 1.5, Date: new Date(now).setDate(now.getDate() - 4) }
-          ],
-          nutrition: [{ Calories: 1850 }],
-          nutritionLogs: [
-            { id: 1, Name: 'Oatmeal Cookies', Calories: 450, Time: '10:30 AM' },
-            { id: 2, Name: 'Post-Workout Shake', Calories: 320, Time: '08:15 AM' }
-          ],
-          goals: [{ _id: '1' }, { _id: '2' }],
-          wearables: [
-            { _id: 'w1', Brand: 'Garmin', Model: 'Forerunner 265', SerialNumber: 'SN-123456789', type: 'Smartwatch' }
-          ],
-          healthMetrics: Array.from({length: 7}).map((_, i) => {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
-            return { MetricType: 'Heart Rate', Value: 60 + Math.floor(Math.random() * 15), Timestamp: d };
-          }),
-          followers: 12,
-          following: 8,
-          notifications: [],
-          earns: [
-            { _id: 'e1', AchievementID: { Title: 'First 5K', Description: 'Complete your first 5K run' } },
-            { _id: 'e2', AchievementID: { Title: 'Consistency', Description: 'Workout 3 days in a row' } }
-          ]
-        });
-      } finally {
-        setLoading(false);
-      }
+  try {
+    const res = await axios.get("/api/dashboard");
+    const d = res.data;
+
+    const mapUser = (u) => {
+      if (!u) return null;
+
+      return {
+        UserID: u.USERID,
+        FirstName: u.FIRSTNAME,
+        LastName: u.LASTNAME,
+        Email: u.EMAIL,
+        DOB: u.DOB,
+        Gender: u.GENDER,
+      };
     };
+
+    const mapAthlete = (a) => {
+      if (!a) return null;
+
+      return {
+        UserID: a.USERID,
+        SportType: a.SPORTTYPE,
+        SkillLevel: a.SKILLLEVEL,
+      };
+    };
+
+    const mapActivity = (a) => ({
+      ActivityID: a.ACTIVITYID,
+      Type: a.TYPE,
+      Duration: Number(a.DURATION || 0),
+      Distance: Number(a.DISTANCE || 0),
+      Date: a.Date || a.DATE,
+      UserID: a.USERID,
+      _id: a.ACTIVITYID,
+    });
+
+    const mapNutrition = (n) => ({
+      NutritionID: n.NUTRITIONID,
+      MealType: n.MEALTYPE,
+      Calories: Number(n.CALORIES || 0),
+      Quantity: n.QUANTITY,
+      Date: n.Date || n.DATE,
+      UserID: n.USERID,
+      _id: n.NUTRITIONID,
+    });
+
+    const mapGoal = (g) => ({
+      GoalID: g.GOALID,
+      GoalType: g.GOALTYPE,
+      TargetValue: g.TARGETVALUE,
+      Deadline: g.DEADLINE,
+      UserID: g.USERID,
+      _id: g.GOALID,
+    });
+
+    const mapWearable = (w) => ({
+      DeviceID: w.DEVICEID,
+      Brand: w.BRAND,
+      Model: w.MODEL,
+      SerialNumber: w.SERIALNUMBER,
+      UserID: w.USERID,
+      type: w.TYPE || "Device",
+      _id: w.DEVICEID,
+    });
+
+    const mapHealthMetric = (m) => ({
+      DeviceID: m.DEVICEID,
+      MetricID: m.METRICID,
+      MetricType: m.METRICTYPE,
+      Value: Number(m.VALUE || 0),
+      Unit: m.UNIT,
+      Timestamp: m.TIMESTAMP,
+      _id: m.METRICID,
+    });
+
+    const mapEarn = (e) => ({
+      _id: `${e.ACTIVITYID}-${e.ACHIEVEMENTID}`,
+      ActivityID: e.ACTIVITYID,
+      AchievementID: {
+        AchievementID: e.ACHIEVEMENTID,
+        Title: e.TITLE,
+        Description: e.DESCRIPTION,
+        DateAwarded: e.DATEAWARDED,
+      },
+    });
+
+    setData({
+      user: mapUser(d.user),
+      athlete: mapAthlete(d.athlete),
+
+      phones: (d.phones || []).map((p) => ({
+        UserID: p.USERID,
+        PhoneNumber: p.PHONENUMBER,
+      })),
+
+      activities: (d.activities || []).map(mapActivity),
+
+      nutrition: (d.nutrition || []).map(mapNutrition),
+
+      goals: (d.goals || []).map(mapGoal),
+
+      wearables: (d.wearables || []).map(mapWearable),
+
+      healthMetrics: (d.healthMetrics || []).map(mapHealthMetric),
+
+      followers: Number(d.followers || 0),
+      following: Number(d.following || 0),
+
+      notifications: d.notifications || [],
+
+      earns: (d.earns || []).map(mapEarn),
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+    setData(null);
+  } finally {
+    setLoading(false);
+  }
+};
     fetchData();
   }, []);
 

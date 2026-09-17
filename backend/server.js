@@ -1,32 +1,34 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+const { initializeDatabase } = require('./config/database');
+
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
 const apiRoutes = require('./routes/api');
 app.use('/api', apiRoutes);
 
-// Default route
 app.get('/', (req, res) => {
   res.send('Garmin Clone API is running');
 });
 
-// Database Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
+async function startServer() {
+  try {
+    await initializeDatabase();
+
     const PORT = process.env.PORT || 5000;
+
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.error('Database connection error:', err);
-  });
+  } catch (error) {
+    console.error('Server startup error:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
