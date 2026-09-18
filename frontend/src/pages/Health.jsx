@@ -6,6 +6,7 @@ export default function Health() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     DeviceID: "",
@@ -36,6 +37,17 @@ export default function Health() {
     fetchData();
   }, []);
 
+  const resetForm = () => {
+    setForm({
+      DeviceID: "",
+      MetricType: "",
+      Value: "",
+      Unit: "",
+      Timestamp: ""
+    });
+    setEditingId(null);
+  };
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -50,28 +62,75 @@ export default function Health() {
     try {
       const timestamp = form.Timestamp.replace("T", " ");
 
-      await axios.post("/api/health", {
+      const data = {
         DeviceID: Number(form.DeviceID),
         MetricType: form.MetricType,
         Value: Number(form.Value),
         Unit: form.Unit,
         Timestamp: `${timestamp}:00`
-      });
+      };
 
-      setForm({
-        DeviceID: "",
-        MetricType: "",
-        Value: "",
-        Unit: "",
-        Timestamp: ""
-      });
+      if (editingId) {
+        await axios.put(`/api/health/${editingId}`, data);
+      } else {
+        await axios.post("/api/health", data);
+      }
 
+      resetForm();
       await fetchData();
 
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.error || "Failed to add health metric"
+        err.response?.data?.error ||
+        "Failed to save health metric"
+      );
+    }
+  };
+
+  const handleEdit = (metric) => {
+    setEditingId(metric.METRICID);
+
+    let timestamp = metric.TIMESTAMP;
+
+    if (timestamp) {
+      timestamp = timestamp.toString().replace(" ", "T").slice(0, 16);
+    }
+
+    const device = devices.find(
+      (d) => d.DEVICEID === metric.DEVICEID
+    );
+
+    setForm({
+      DeviceID: metric.DEVICEID || "",
+      MetricType: metric.METRICTYPE || "",
+      Value: metric.VALUE ?? "",
+      Unit: metric.UNIT || "",
+      Timestamp: timestamp || ""
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleDelete = async (metricId) => {
+    if (!window.confirm("Delete this health metric?")) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await axios.delete(`/api/health/${metricId}`);
+      await fetchData();
+
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+        "Failed to delete health metric"
       );
     }
   };
@@ -92,7 +151,7 @@ export default function Health() {
       <div className="bg-white rounded-xl shadow p-6 mb-8">
 
         <h2 className="text-xl font-bold mb-5">
-          Add Health Metric
+          {editingId ? "Edit Health Metric" : "Add Health Metric"}
         </h2>
 
         <form
@@ -142,24 +201,12 @@ export default function Health() {
               <option value="">
                 Select metric
               </option>
-              <option value="Heart Rate">
-                Heart Rate
-              </option>
-              <option value="Steps">
-                Steps
-              </option>
-              <option value="SpO2">
-                SpO2
-              </option>
-              <option value="Calories">
-                Calories
-              </option>
-              <option value="Sleep">
-                Sleep
-              </option>
-              <option value="Stress">
-                Stress
-              </option>
+              <option value="Heart Rate">Heart Rate</option>
+              <option value="Steps">Steps</option>
+              <option value="SpO2">SpO2</option>
+              <option value="Calories">Calories</option>
+              <option value="Sleep">Sleep</option>
+              <option value="Stress">Stress</option>
             </select>
           </div>
 
@@ -210,13 +257,25 @@ export default function Health() {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-3">
+
             <button
               type="submit"
               className="bg-garmin-blue text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Add Health Metric
+              {editingId ? "Update Health Metric" : "Add Health Metric"}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold"
+              >
+                Cancel
+              </button>
+            )}
+
           </div>
 
         </form>
@@ -246,6 +305,7 @@ export default function Health() {
                   <th className="p-3">Unit</th>
                   <th className="p-3">Device</th>
                   <th className="p-3">Timestamp</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
 
@@ -255,6 +315,7 @@ export default function Health() {
                     key={metric.METRICID}
                     className="border-b"
                   >
+
                     <td className="p-3">
                       {metric.METRICTYPE}
                     </td>
@@ -274,6 +335,27 @@ export default function Health() {
                     <td className="p-3">
                       {metric.TIMESTAMP}
                     </td>
+
+                    <td className="p-3">
+                      <div className="flex gap-2">
+
+                        <button
+                          onClick={() => handleEdit(metric)}
+                          className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-semibold"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(metric.METRICID)}
+                          className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold"
+                        >
+                          Delete
+                        </button>
+
+                      </div>
+                    </td>
+
                   </tr>
                 ))}
               </tbody>

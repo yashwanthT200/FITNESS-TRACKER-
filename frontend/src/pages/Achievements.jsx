@@ -6,6 +6,7 @@ export default function Achievements() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     Title: "",
@@ -37,6 +38,16 @@ export default function Achievements() {
     fetchData();
   }, []);
 
+  const resetForm = () => {
+    setForm({
+      Title: "",
+      Description: "",
+      DateAwarded: "",
+      ActivityID: ""
+    });
+    setEditingId(null);
+  };
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -48,26 +59,86 @@ export default function Achievements() {
     e.preventDefault();
     setError("");
 
+    const data = {
+      Title: form.Title,
+      Description: form.Description,
+      DateAwarded: form.DateAwarded,
+      ActivityID: Number(form.ActivityID)
+    };
+
     try {
-      await axios.post("/api/achievements", {
-        Title: form.Title,
-        Description: form.Description,
-        DateAwarded: form.DateAwarded,
-        ActivityID: Number(form.ActivityID)
-      });
+      if (editingId) {
+        await axios.put(`/api/achievements/${editingId}`, data);
+      } else {
+        await axios.post("/api/achievements", data);
+      }
 
-      setForm({
-        Title: "",
-        Description: "",
-        DateAwarded: "",
-        ActivityID: ""
-      });
-
+      resetForm();
       await fetchData();
+
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.error || "Failed to create achievement"
+        err.response?.data?.error ||
+        "Failed to save achievement"
+      );
+    }
+  };
+
+  const handleEdit = (achievement) => {
+    const achievementId =
+      achievement.ACHIEVEMENTID ??
+      achievement.AchievementID;
+
+    const activityId =
+      achievement.ACTIVITYID ??
+      achievement.ActivityID;
+
+    const title =
+      achievement.TITLE ??
+      achievement.Title;
+
+    const description =
+      achievement.DESCRIPTION ??
+      achievement.Description;
+
+    const dateAwarded =
+      achievement.DATEAWARDED ??
+      achievement.DateAwarded;
+
+    setEditingId(achievementId);
+
+    setForm({
+      Title: title || "",
+      Description: description || "",
+      DateAwarded: dateAwarded
+        ? String(dateAwarded).substring(0, 10)
+        : "",
+      ActivityID: activityId ?? ""
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleDelete = async (achievementId) => {
+    if (!window.confirm("Delete this achievement?")) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await axios.delete(`/api/achievements/${achievementId}`);
+      await fetchData();
+
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+        "Failed to delete achievement"
       );
     }
   };
@@ -86,7 +157,7 @@ export default function Achievements() {
 
       <div className="bg-white rounded-xl shadow p-6 mb-8">
         <h2 className="text-xl font-bold mb-5">
-          Add Achievement
+          {editingId ? "Edit Achievement" : "Add Achievement"}
         </h2>
 
         <form
@@ -168,13 +239,23 @@ export default function Achievements() {
             </select>
           </div>
 
-          <div className="flex items-end">
+          <div className="flex items-end gap-3">
             <button
               type="submit"
               className="bg-garmin-blue text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Add Achievement
+              {editingId ? "Save Changes" : "Add Achievement"}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -266,6 +347,24 @@ export default function Achievements() {
                       <strong>Date Awarded:</strong>{" "}
                       {dateAwarded || "N/A"}
                     </p>
+                  </div>
+
+                  <div className="flex gap-2 mt-5">
+                    <button
+                      onClick={() => handleEdit(achievement)}
+                      className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleDelete(achievementId)
+                      }
+                      className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-medium"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               );

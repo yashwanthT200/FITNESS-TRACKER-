@@ -5,6 +5,7 @@ export default function Goals() {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     GoalType: "",
@@ -28,6 +29,15 @@ export default function Goals() {
     fetchGoals();
   }, []);
 
+  const resetForm = () => {
+    setForm({
+      GoalType: "",
+      TargetValue: "",
+      Deadline: ""
+    });
+    setEditingId(null);
+  };
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -39,25 +49,64 @@ export default function Goals() {
     e.preventDefault();
     setError("");
 
+    const data = {
+      GoalType: form.GoalType,
+      TargetValue: Number(form.TargetValue),
+      Deadline: form.Deadline
+    };
+
     try {
-      await axios.post("/api/goals", {
-        GoalType: form.GoalType,
-        TargetValue: Number(form.TargetValue),
-        Deadline: form.Deadline
-      });
+      if (editingId) {
+        await axios.put(`/api/goals/${editingId}`, data);
+      } else {
+        await axios.post("/api/goals", data);
+      }
 
-      setForm({
-        GoalType: "",
-        TargetValue: "",
-        Deadline: ""
-      });
-
+      resetForm();
       await fetchGoals();
 
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.error || "Failed to create goal"
+        err.response?.data?.error ||
+        "Failed to save goal"
+      );
+    }
+  };
+
+  const handleEdit = (goal) => {
+    setEditingId(goal.GOALID);
+
+    setForm({
+      GoalType: goal.GOALTYPE || "",
+      TargetValue: goal.TARGETVALUE ?? "",
+      Deadline: goal.DEADLINE
+        ? String(goal.DEADLINE).substring(0, 10)
+        : ""
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleDelete = async (goalId) => {
+    if (!window.confirm("Delete this goal?")) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await axios.delete(`/api/goals/${goalId}`);
+      await fetchGoals();
+
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+        "Failed to delete goal"
       );
     }
   };
@@ -78,7 +127,7 @@ export default function Goals() {
       <div className="bg-white rounded-xl shadow p-6 mb-8">
 
         <h2 className="text-xl font-bold mb-5">
-          Add Goal
+          {editingId ? "Edit Goal" : "Add Goal"}
         </h2>
 
         <form
@@ -149,13 +198,25 @@ export default function Goals() {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-3">
+
             <button
               type="submit"
               className="bg-garmin-blue text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Add Goal
+              {editingId ? "Save Changes" : "Add Goal"}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold"
+              >
+                Cancel
+              </button>
+            )}
+
           </div>
 
         </form>
@@ -183,6 +244,7 @@ export default function Goals() {
                   <th className="p-3">Goal</th>
                   <th className="p-3">Target</th>
                   <th className="p-3">Deadline</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
 
@@ -202,6 +264,26 @@ export default function Goals() {
 
                     <td className="p-3">
                       {goal.DEADLINE}
+                    </td>
+
+                    <td className="p-3 flex gap-2">
+
+                      <button
+                        onClick={() => handleEdit(goal)}
+                        className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          handleDelete(goal.GOALID)
+                        }
+                        className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-medium"
+                      >
+                        Delete
+                      </button>
+
                     </td>
                   </tr>
                 ))}

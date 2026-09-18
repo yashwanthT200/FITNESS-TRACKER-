@@ -9,7 +9,8 @@ const poolConfig = {
     connectString: process.env.ORACLE_CONNECT_STRING,
     poolMin: 1,
     poolMax: 10,
-    poolIncrement: 1
+    poolIncrement: 1,
+    queueTimeout: 5000
 };
 
 let pool;

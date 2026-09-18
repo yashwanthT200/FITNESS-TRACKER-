@@ -14,6 +14,7 @@ import {
   Settings,
   LayoutDashboard,
   LogOut,
+  Terminal,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -29,6 +30,7 @@ const navItems = [
   { name: "Trainers", path: "/trainers", icon: UserCheck },
   { name: "Notifications", path: "/notifications", icon: Bell },
   { name: "Profile", path: "/profile", icon: User },
+  { name: "SQL Terminal", path: "/sql-terminal", icon: Terminal },
 ];
 
 export const Sidebar = () => {

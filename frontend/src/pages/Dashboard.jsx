@@ -300,8 +300,11 @@ export const Dashboard = () => {
           <div className="p-6 h-full">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center"><Watch className="mr-2 text-garmin-blue" /> My Devices</h3>
             <div className="space-y-4">
-              {data.wearables.map(device => (
-                <div key={device._id} className="flex items-center p-4 bg-gray-50 border border-gray-100 rounded-xl transition-all hover:bg-gray-100">
+              {data.wearables.map((device, index) => (
+  <div
+    key={device.DeviceID ?? device._id ?? `device-${index}`}
+    className="flex items-center p-4 bg-gray-50 border border-gray-100 rounded-xl transition-all hover:bg-gray-100"
+  >
                   <div className="mr-4 text-garmin-blue bg-blue-50 p-3 rounded-full shadow-inner">
                     <Watch size={24} />
                   </div>
@@ -326,8 +329,11 @@ export const Dashboard = () => {
           <div className="p-6 h-full">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center"><Trophy className="mr-2 text-yellow-500" /> Recent Achievements</h3>
             <div className="space-y-4">
-              {data.earns.slice(0, 3).map(earn => (
-                <div key={earn._id} className="flex items-center p-4 bg-yellow-50 border border-yellow-100 rounded-xl transition-all hover:bg-yellow-100/70">
+              {data.earns.slice(0, 3).map((earn, index) => (
+  <div
+    key={earn._id ?? `achievement-${index}`}
+    className="flex items-center p-4 bg-yellow-50 border border-yellow-100 rounded-xl transition-all hover:bg-yellow-100/70"
+  >
                   <div className="mr-4 text-yellow-500 bg-yellow-200/50 p-3 rounded-full shadow-inner">
                     <Trophy size={24} />
                   </div>

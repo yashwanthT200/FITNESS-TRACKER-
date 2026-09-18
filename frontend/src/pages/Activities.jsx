@@ -5,6 +5,7 @@ export default function Activities() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     Type: "",
@@ -36,31 +37,84 @@ export default function Activities() {
     });
   };
 
+  const resetForm = () => {
+    setForm({
+      Type: "",
+      Duration: "",
+      Distance: "",
+      Date: ""
+    });
+    setEditingId(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     try {
-      await axios.post("/api/activities", {
+      const data = {
         Type: form.Type,
         Duration: Number(form.Duration),
         Distance: Number(form.Distance),
         Date: form.Date
-      });
+      };
 
-      setForm({
-        Type: "",
-        Duration: "",
-        Distance: "",
-        Date: ""
-      });
+      if (editingId) {
+        await axios.put(`/api/activities/${editingId}`, data);
+      } else {
+        await axios.post("/api/activities", data);
+      }
 
+      resetForm();
       await fetchActivities();
 
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.error || "Failed to create activity"
+        err.response?.data?.error ||
+        (editingId
+          ? "Failed to update activity"
+          : "Failed to create activity")
+      );
+    }
+  };
+
+  const handleEdit = (activity) => {
+    setEditingId(activity.ACTIVITYID);
+
+    setForm({
+      Type: activity.TYPE || "",
+      Duration: activity.DURATION || "",
+      Distance: activity.DISTANCE || "",
+      Date: activity.Date
+        ? activity.Date.substring(0, 10)
+        : activity.DATE
+          ? activity.DATE.substring(0, 10)
+          : ""
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleDelete = async (activityId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this activity?"
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+
+    try {
+      await axios.delete(`/api/activities/${activityId}`);
+      await fetchActivities();
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.error || "Failed to delete activity"
       );
     }
   };
@@ -81,10 +135,13 @@ export default function Activities() {
       <div className="bg-white rounded-xl shadow p-6 mb-8">
 
         <h2 className="text-xl font-bold mb-5">
-          Add Activity
+          {editingId ? "Edit Activity" : "Add Activity"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
 
           <div>
             <label className="block mb-1 font-medium">
@@ -156,13 +213,25 @@ export default function Activities() {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-3">
+
             <button
               type="submit"
               className="bg-garmin-blue text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Add Activity
+              {editingId ? "Save Changes" : "Add Activity"}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold"
+              >
+                Cancel
+              </button>
+            )}
+
           </div>
 
         </form>
@@ -191,15 +260,18 @@ export default function Activities() {
                   <th className="p-3">Duration</th>
                   <th className="p-3">Distance</th>
                   <th className="p-3">Date</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
 
               <tbody>
+
                 {activities.map((activity) => (
                   <tr
                     key={activity.ACTIVITYID}
                     className="border-b"
                   >
+
                     <td className="p-3">
                       {activity.TYPE}
                     </td>
@@ -215,8 +287,32 @@ export default function Activities() {
                     <td className="p-3">
                       {activity.Date || activity.DATE}
                     </td>
+
+                    <td className="p-3">
+                      <div className="flex gap-2">
+
+                        <button
+                          onClick={() => handleEdit(activity)}
+                          className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium hover:bg-blue-200"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            handleDelete(activity.ACTIVITYID)
+                          }
+                          className="bg-red-100 text-red-700 px-3 py-1.5 rounded-lg font-medium hover:bg-red-200"
+                        >
+                          Delete
+                        </button>
+
+                      </div>
+                    </td>
+
                   </tr>
                 ))}
+
               </tbody>
 
             </table>

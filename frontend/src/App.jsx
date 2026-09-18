@@ -15,6 +15,7 @@ import Social from "./pages/Social";
 import Trainers from "./pages/Trainers";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
+import SQLTerminal from "./pages/SQLTerminal";
 const CookieBanner = () => {
   const [accepted, setAccepted] = useState(
     localStorage.getItem("cookiesAccepted") === "true"
@@ -91,6 +92,7 @@ function App() {
   element={<Notifications />}
 />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/sql-terminal" element={<SQLTerminal />} />
           <Route
             path="settings"
             element={<PlaceholderPage title="Settings" />}

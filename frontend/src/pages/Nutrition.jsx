@@ -5,6 +5,7 @@ export default function Nutrition() {
   const [nutrition, setNutrition] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     MealType: "",
@@ -20,7 +21,7 @@ export default function Nutrition() {
       setNutrition(res.data);
     } catch (err) {
       console.error(err);
-      setError("Failed to load nutrition data");
+      setError("Failed to load nutrition");
     } finally {
       setLoading(false);
     }
@@ -29,6 +30,17 @@ export default function Nutrition() {
   useEffect(() => {
     fetchNutrition();
   }, []);
+
+  const resetForm = () => {
+    setForm({
+      MealType: "",
+      Calories: "",
+      Quantity: "",
+      Date: "",
+      FoodItems: ""
+    });
+    setEditingId(null);
+  };
 
   const handleChange = (e) => {
     setForm({
@@ -41,34 +53,75 @@ export default function Nutrition() {
     e.preventDefault();
     setError("");
 
-    try {
-      const foodItems = form.FoodItems
+    const data = {
+      MealType: form.MealType,
+      Calories: Number(form.Calories),
+      Quantity: Number(form.Quantity),
+      Date: form.Date,
+      FoodItems: form.FoodItems
         .split(",")
         .map(item => item.trim())
-        .filter(item => item);
+        .filter(Boolean)
+    };
 
-      await axios.post("/api/nutrition", {
-        MealType: form.MealType,
-        Calories: Number(form.Calories),
-        Quantity: Number(form.Quantity),
-        Date: form.Date,
-        FoodItems: foodItems
-      });
+    try {
+      if (editingId) {
+        await axios.put(`/api/nutrition/${editingId}`, data);
+      } else {
+        await axios.post("/api/nutrition", data);
+      }
 
-      setForm({
-        MealType: "",
-        Calories: "",
-        Quantity: "",
-        Date: "",
-        FoodItems: ""
-      });
-
+      resetForm();
       await fetchNutrition();
 
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.error || "Failed to add nutrition"
+        err.response?.data?.error ||
+        "Failed to save nutrition"
+      );
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingId(item.NUTRITIONID);
+
+    setForm({
+      MealType: item.MEALTYPE || "",
+      Calories: item.CALORIES ?? "",
+      Quantity: item.QUANTITY ?? "",
+      Date: item.Date
+        ? String(item.Date).substring(0, 10)
+        : item.DATE
+          ? String(item.DATE).substring(0, 10)
+          : "",
+      FoodItems: Array.isArray(item.FOODITEMS)
+        ? item.FOODITEMS.join(", ")
+        : item.FOODITEMS || ""
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleDelete = async (nutritionId) => {
+    if (!window.confirm("Delete this nutrition record?")) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await axios.delete(`/api/nutrition/${nutritionId}`);
+      await fetchNutrition();
+
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+        "Failed to delete nutrition"
       );
     }
   };
@@ -89,7 +142,7 @@ export default function Nutrition() {
       <div className="bg-white rounded-xl shadow p-6 mb-8">
 
         <h2 className="text-xl font-bold mb-5">
-          Add Nutrition
+          {editingId ? "Edit Nutrition" : "Add Nutrition"}
         </h2>
 
         <form
@@ -175,7 +228,7 @@ export default function Nutrition() {
               name="FoodItems"
               value={form.FoodItems}
               onChange={handleChange}
-              placeholder="Example: Oatmeal, Banana, Milk"
+              placeholder="Rice, Chicken, Salad"
               className="w-full border rounded-lg p-3"
             />
 
@@ -184,13 +237,25 @@ export default function Nutrition() {
             </p>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-3">
+
             <button
               type="submit"
               className="bg-garmin-blue text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Add Nutrition
+              {editingId ? "Save Changes" : "Add Nutrition"}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold"
+              >
+                Cancel
+              </button>
+            )}
+
           </div>
 
         </form>
@@ -218,8 +283,8 @@ export default function Nutrition() {
                   <th className="p-3">Meal</th>
                   <th className="p-3">Calories</th>
                   <th className="p-3">Quantity</th>
-                  <th className="p-3">Food Items</th>
                   <th className="p-3">Date</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
 
@@ -242,13 +307,27 @@ export default function Nutrition() {
                     </td>
 
                     <td className="p-3">
-                      {Array.isArray(item.FOODITEMS)
-                        ? item.FOODITEMS.join(", ")
-                        : item.FOODITEMS || "-"}
+                      {item.Date || item.DATE}
                     </td>
 
-                    <td className="p-3">
-                      {item.Date || item.DATE}
+                    <td className="p-3 flex gap-2">
+
+                      <button
+  onClick={() => handleEdit(item)}
+  className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium"
+>
+  Edit
+</button>
+
+<button
+  onClick={() =>
+    handleDelete(item.NUTRITIONID)
+  }
+  className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-medium"
+>
+  Delete
+</button>
+
                     </td>
                   </tr>
                 ))}

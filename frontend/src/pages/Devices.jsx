@@ -5,6 +5,7 @@ export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     Brand: "",
@@ -34,6 +35,21 @@ export default function Devices() {
     fetchDevices();
   }, []);
 
+  const resetForm = () => {
+    setForm({
+      Brand: "",
+      Model: "",
+      SerialNumber: "",
+      DeviceType: "Smartwatch",
+      Features: "",
+      HasGPS: false,
+      WaterResistance: "",
+      BandMaterial: "",
+      HasHRSensor: false
+    });
+    setEditingId(null);
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -53,7 +69,7 @@ export default function Devices() {
         .map(feature => feature.trim())
         .filter(feature => feature);
 
-      await axios.post("/api/devices", {
+      const data = {
         Brand: form.Brand,
         Model: form.Model,
         SerialNumber: form.SerialNumber,
@@ -63,26 +79,69 @@ export default function Devices() {
         WaterResistance: form.WaterResistance,
         BandMaterial: form.BandMaterial,
         HasHRSensor: form.HasHRSensor
-      });
+      };
 
-      setForm({
-        Brand: "",
-        Model: "",
-        SerialNumber: "",
-        DeviceType: "Smartwatch",
-        Features: "",
-        HasGPS: false,
-        WaterResistance: "",
-        BandMaterial: "",
-        HasHRSensor: false
-      });
+      if (editingId) {
+        await axios.put(`/api/devices/${editingId}`, data);
+      } else {
+        await axios.post("/api/devices", data);
+      }
 
+      resetForm();
       await fetchDevices();
 
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.error || "Failed to add device"
+        err.response?.data?.error ||
+        "Failed to save device"
+      );
+    }
+  };
+
+  const handleEdit = (device) => {
+    setEditingId(device.DEVICEID);
+
+    setForm({
+      Brand: device.BRAND || "",
+      Model: device.MODEL || "",
+      SerialNumber: device.SERIALNUMBER || "",
+      DeviceType: device.DEVICETYPE || "Smartwatch",
+      Features: device.FEATURES || "",
+      HasGPS:
+  device.HASGPS === 1 ||
+  device.HASGPS === true ||
+  device.HASGPS === "Yes",
+      WaterResistance: device.WATERRESISTANCE || "",
+      BandMaterial: device.BANDMATERIAL || "",
+      HasHRSensor:
+  device.HASHRSENSOR === 1 ||
+  device.HASHRSENSOR === true ||
+  device.HASHRSENSOR === "Yes"
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleDelete = async (deviceId) => {
+    if (!window.confirm("Delete this device?")) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await axios.delete(`/api/devices/${deviceId}`);
+      await fetchDevices();
+
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+        "Failed to delete device"
       );
     }
   };
@@ -103,7 +162,7 @@ export default function Devices() {
       <div className="bg-white rounded-xl shadow p-6 mb-8">
 
         <h2 className="text-xl font-bold mb-5">
-          Add Wearable Device
+          {editingId ? "Edit Wearable Device" : "Add Wearable Device"}
         </h2>
 
         <form
@@ -252,13 +311,25 @@ export default function Devices() {
             </>
           )}
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-3">
+
             <button
               type="submit"
               className="bg-garmin-blue text-white px-6 py-3 rounded-lg font-semibold"
             >
-              Add Device
+              {editingId ? "Save Changes" : "Add Device"}
             </button>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold"
+              >
+                Cancel
+              </button>
+            )}
+
           </div>
 
         </form>
@@ -288,6 +359,7 @@ export default function Devices() {
                   <th className="p-3">Serial Number</th>
                   <th className="p-3">Type</th>
                   <th className="p-3">Features</th>
+                  <th className="p-3">Actions</th>
                 </tr>
               </thead>
 
@@ -315,6 +387,26 @@ export default function Devices() {
 
                     <td className="p-3">
                       {device.FEATURES || "-"}
+                    </td>
+
+                    <td className="p-3 flex gap-2">
+
+                      <button
+                        onClick={() => handleEdit(device)}
+                        className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          handleDelete(device.DEVICEID)
+                        }
+                        className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-medium"
+                      >
+                        Delete
+                      </button>
+
                     </td>
                   </tr>
                 ))}
